@@ -1,4 +1,3 @@
-// routes/rendezvous.js
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -39,6 +38,15 @@ router.get('/', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'aModifierApres');
     console.log('Agent ID extrait du token:', decoded.id); // Débogage
 
+    // Supprimer les rendez-vous passés pour l'agent connecté
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    await db.query(
+      'DELETE FROM rendez_vous WHERE agent_id = ? AND date_rdv < ?',
+      [decoded.id, today]
+    );
+    console.log(`Rendez-vous passés supprimés pour agent_id ${decoded.id} avant ${today}`);
+
+    // Récupérer les rendez-vous restants
     const [rows] = await db.query(
       'SELECT r.*, u.nom AS agent_nom FROM rendez_vous r LEFT JOIN utilisateurs u ON r.agent_id = u.id WHERE r.agent_id = ?',
       [decoded.id]

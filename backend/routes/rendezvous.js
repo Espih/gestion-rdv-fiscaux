@@ -1,7 +1,9 @@
+// routes/rendezvous.js
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { body, validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
 
 // GET /api/rendezvous/motifs
 router.get('/motifs', async (req, res) => {
@@ -30,12 +32,18 @@ router.get('/agents', async (req, res) => {
 // GET /api/rendezvous
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT r.*, m.libelle as motif_libelle, u.nom as agent_nom
-      FROM rendez_vous r
-      LEFT JOIN motifs m ON r.motif_id = m.id
-      LEFT JOIN utilisateurs u ON r.agent_id = u.id
-    `);
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Authentification requise' });
+
+    console.log('JWT_SECRET from env:', process.env.JWT_SECRET); // Débogage
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'aModifierApres');
+    console.log('Agent ID extrait du token:', decoded.id); // Débogage
+
+    const [rows] = await db.query(
+      'SELECT r.*, u.nom AS agent_nom FROM rendez_vous r LEFT JOIN utilisateurs u ON r.agent_id = u.id WHERE r.agent_id = ?',
+      [decoded.id]
+    );
+
     res.json(rows);
   } catch (err) {
     console.error('Erreur fetch rendez-vous:', err);

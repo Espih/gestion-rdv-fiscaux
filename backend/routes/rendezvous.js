@@ -12,6 +12,22 @@ if (!transporter || !transporter.sendMail) {
   console.error('Transporteur non valide ou non importé:', transporter);
 }
 
+// Nouvel endpoint pour supprimer les rendez-vous passés
+router.delete('/past', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const [result] = await db.query(
+      'DELETE FROM rendez_vous WHERE date_rdv < ?',
+      [today]
+    );
+    console.log(`Rendez-vous passés supprimés : ${result.affectedRows} lignes affectées`);
+    res.json({ message: 'Rendez-vous passés supprimés avec succès', deletedCount: result.affectedRows });
+  } catch (err) {
+    console.error('Erreur suppression rendez-vous passés:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
 // GET /api/rendezvous/motifs
 router.get('/motifs', async (req, res) => {
   try {
@@ -46,7 +62,7 @@ router.get('/', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'aModifierApres');
     console.log('Utilisateur extrait du token:', { id: decoded.id, role: decoded.role });
 
-    // Supprimer les rendez-vous passés uniquement pour les agents
+    // Supprimer les rendez-vous passés uniquement pour les agents (optionnel, peut être retiré si le DELETE /past est utilisé)
     const today = new Date().toISOString().split('T')[0];
     if (decoded.role === 'agent') {
       await db.query(

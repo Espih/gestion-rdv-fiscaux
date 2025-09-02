@@ -145,6 +145,18 @@ router.post(
     console.log('Payload reçu:', req.body);
 
     try {
+      // Vérifier si un rendez-vous existe déjà avec les mêmes date, heure, motif et agent
+      const [existingRdv] = await db.query(
+        'SELECT id FROM rendez_vous WHERE date_rdv = ? AND heure_rdv = ? AND motif_id = ? AND agent_id = ?',
+        [date_rdv, heure_rdv.split(':').slice(0, 2).join(':'), motif_id, agent_id]
+      );
+
+      if (existingRdv.length > 0) {
+        return res.status(400).json({
+          message: 'Un rendez-vous existe déjà à cette date, heure, motif et avec cet agent. Veuillez choisir une autre date ou heure , merci!',
+        });
+      }
+
       const [motifRows] = await db.query('SELECT id, agent_id FROM motifs WHERE id = ?', [motif_id]);
       if (motifRows.length === 0) {
         console.log(`Motif ID ${motif_id} non trouvé`);
